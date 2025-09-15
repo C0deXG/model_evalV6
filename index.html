@@ -3,24 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Evaluation Results</title>
+    <title>Audio Model Evaluation Results</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 </head>
 <body>
     <header>
-        <h1>Audio Model Evaluation Results</h1>
-        <div class="controls">
-            <button id="fontIncrease" class="font-btn">Increase Font</button>
-            <button id="fontDecrease" class="font-btn">Decrease Font</button>
-            <span id="fontSize">16px</span>
+        <div class="header-content">
+            <h1>Audio Model Evaluation Results</h1>
+            <div class="controls">
+                <button id="fontIncrease" class="font-btn" title="Increase font size (Ctrl/Cmd + +)">
+                    <span class="btn-icon">🔍+</span>
+                    <span class="btn-text">Increase Font</span>
+                </button>
+                <button id="fontDecrease" class="font-btn" title="Decrease font size (Ctrl/Cmd + -)">
+                    <span class="btn-icon">🔍-</span>
+                    <span class="btn-text">Decrease Font</span>
+                </button>
+                <div class="font-size-display">
+                    <span id="fontSize">18px</span>
+                </div>
+            </div>
         </div>
     </header>
     
     <main>
-        <div id="loading">Loading data...</div>
+        <div id="loading" class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading evaluation data...</div>
+        </div>
+        <div id="error" class="error-container" style="display: none;">
+            <div class="error-icon">⚠️</div>
+            <div class="error-text">Failed to load data. Please refresh the page.</div>
+            <button id="retryBtn" class="retry-btn">Retry</button>
+        </div>
         <div id="cardsContainer" class="cards-container"></div>
     </main>
+    
+    <footer>
+        <div class="footer-content">
+            <p>Audio Model Evaluation Dashboard</p>
+            <div class="stats" id="stats"></div>
+        </div>
+    </footer>
     
     <script src="script.js"></script>
 </body>
