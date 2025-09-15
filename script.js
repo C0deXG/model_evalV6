@@ -11,13 +11,20 @@ class AudioEvaluationApp {
         this.currentView = 'list'; // Default to list view
         this.isLoading = false;
         this.intersectionObserver = null;
+        
+        // Pagination
+        this.cardsPerPage = 10;
+        this.currentPage = 0;
+        this.totalPages = 0;
+        
         this.init();
     }
 
     async init() {
         this.setupEventListeners();
         await this.loadData();
-        this.renderCards();
+        this.setupPagination();
+        this.renderCurrentPage();
         this.updateStats();
     }
 
@@ -63,6 +70,17 @@ class AudioEvaluationApp {
         const retryBtn = document.getElementById('retryBtn');
         if (retryBtn) {
             retryBtn.addEventListener('click', () => this.retryLoadData());
+        }
+        
+        // Pagination controls
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', () => this.previousPage());
+        }
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', () => this.nextPage());
         }
         
         // Keyboard shortcuts - Safari optimized
@@ -184,16 +202,19 @@ class AudioEvaluationApp {
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
         const container = document.getElementById('cardsContainer');
+        const pagination = document.getElementById('pagination');
         
         if (loading) loading.style.display = 'block';
         if (error) error.style.display = 'none';
         if (container) container.innerHTML = '';
+        if (pagination) pagination.style.display = 'none';
     }
 
     showError(message) {
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
         const container = document.getElementById('cardsContainer');
+        const pagination = document.getElementById('pagination');
         
         if (loading) loading.style.display = 'none';
         if (error) {
@@ -202,64 +223,97 @@ class AudioEvaluationApp {
             if (errorText) errorText.textContent = message;
         }
         if (container) container.innerHTML = '';
+        if (pagination) pagination.style.display = 'none';
     }
 
-    increaseFontSize() {
-        if (this.currentFontSize < this.maxFontSize) {
-            this.currentFontSize += 2;
-            this.updateFontSize();
+    setupPagination() {
+        if (!this.data) return;
+        
+        this.totalPages = Math.ceil(this.data.length / this.cardsPerPage);
+        this.currentPage = 0;
+        
+        // Create pagination controls
+        this.createPaginationControls();
+    }
+
+    createPaginationControls() {
+        const pagination = document.getElementById('pagination');
+        if (!pagination) return;
+        
+        pagination.innerHTML = `
+            <div class="pagination-info">
+                <span id="pageInfo">Page 1 of ${this.totalPages}</span>
+                <span id="itemInfo">Showing 1-${Math.min(this.cardsPerPage, this.data.length)} of ${this.data.length} samples</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="prevPage" class="page-btn prev-btn" disabled>
+                    <span>← Previous</span>
+                </button>
+                <button id="nextPage" class="page-btn next-btn">
+                    <span>Next →</span>
+                </button>
+            </div>
+        `;
+        
+        // Add event listeners
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', () => this.previousPage());
         }
-    }
-
-    decreaseFontSize() {
-        if (this.currentFontSize > this.minFontSize) {
-            this.currentFontSize -= 2;
-            this.updateFontSize();
-        }
-    }
-
-    updateFontSize() {
-        const fontSizeDisplay = document.getElementById('fontSize');
-        if (fontSizeDisplay) {
-            fontSizeDisplay.textContent = `${this.currentFontSize}px`;
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', () => this.nextPage());
         }
         
-        const textContents = document.querySelectorAll('.text-content, .modal-text-content');
-        textContents.forEach(element => {
-            element.style.fontSize = `${this.currentFontSize}px`;
-        });
+        pagination.style.display = 'flex';
+    }
 
-        try {
-            localStorage.setItem('preferredFontSize', this.currentFontSize.toString());
-        } catch (e) {
-            console.warn('Could not save font size preference:', e);
+    previousPage() {
+        if (this.currentPage > 0) {
+            this.currentPage--;
+            this.renderCurrentPage();
+            this.updatePaginationControls();
+            this.scrollToTop();
         }
     }
 
-    setView(view) {
-        this.currentView = view;
-        const container = document.getElementById('cardsContainer');
-        const gridBtn = document.getElementById('gridView');
-        const listBtn = document.getElementById('listView');
-        
-        if (container) {
-            container.className = `cards-container ${view}-view`;
-        }
-        
-        if (gridBtn && listBtn) {
-            gridBtn.classList.toggle('active', view === 'grid');
-            listBtn.classList.toggle('active', view === 'list');
-        }
-        
-        try {
-            localStorage.setItem('preferredView', view);
-        } catch (e) {
-            console.warn('Could not save view preference:', e);
+    nextPage() {
+        if (this.currentPage < this.totalPages - 1) {
+            this.currentPage++;
+            this.renderCurrentPage();
+            this.updatePaginationControls();
+            this.scrollToTop();
         }
     }
 
-    // Batch rendering to prevent layer explosion
-    renderCards() {
+    updatePaginationControls() {
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+        const itemInfo = document.getElementById('itemInfo');
+        
+        if (prevPageBtn) {
+            prevPageBtn.disabled = this.currentPage === 0;
+        }
+        if (nextPageBtn) {
+            nextPageBtn.disabled = this.currentPage === this.totalPages - 1;
+        }
+        if (pageInfo) {
+            pageInfo.textContent = `Page ${this.currentPage + 1} of ${this.totalPages}`;
+        }
+        if (itemInfo) {
+            const startItem = this.currentPage * this.cardsPerPage + 1;
+            const endItem = Math.min((this.currentPage + 1) * this.cardsPerPage, this.data.length);
+            itemInfo.textContent = `Showing ${startItem}-${endItem} of ${this.data.length} samples`;
+        }
+    }
+
+    scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    renderCurrentPage() {
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
         const container = document.getElementById('cardsContainer');
@@ -273,32 +327,24 @@ class AudioEvaluationApp {
         
         if (!container) return;
 
+        // Clear existing cards
         container.innerHTML = '';
-
-        const batchSize = 20; // Render 20 cards at a time
-        let i = 0;
-
-        const addBatch = () => {
-            const end = Math.min(i + batchSize, this.data.length);
-            for (; i < end; i++) {
-                const card = this.createAudioCard(this.data[i], i);
-                container.appendChild(card);
-            }
-            if (i < this.data.length) {
-                // Use requestIdleCallback if available, otherwise setTimeout
-                if (window.requestIdleCallback) {
-                    requestIdleCallback(addBatch);
-                } else {
-                    setTimeout(addBatch, 16); // ~60fps
-                }
-            } else {
-                // All cards rendered, now set up lazy loading
-                this.setupCardObservers();
-                this.loadPreferences();
-            }
-        };
-
-        addBatch();
+        
+        // Calculate current page data
+        const startIndex = this.currentPage * this.cardsPerPage;
+        const endIndex = Math.min(startIndex + this.cardsPerPage, this.data.length);
+        const currentPageData = this.data.slice(startIndex, endIndex);
+        
+        // Render only current page cards
+        currentPageData.forEach((item, index) => {
+            const globalIndex = startIndex + index;
+            const card = this.createAudioCard(item, globalIndex);
+            container.appendChild(card);
+        });
+        
+        // Set up lazy loading for current page
+        this.setupCardObservers();
+        this.loadPreferences();
     }
 
     createAudioCard(item, index) {
@@ -407,7 +453,7 @@ class AudioEvaluationApp {
             rootMargin: '200px' // Start loading when 200px away from viewport
         });
 
-        // Observe all audio cards
+        // Observe all audio cards on current page
         document.querySelectorAll('.audio-card').forEach(card => {
             this.intersectionObserver.observe(card);
         });
@@ -571,6 +617,60 @@ class AudioEvaluationApp {
         } catch (e) {
             console.warn('Could not load view preference:', e);
             this.setView('list');
+        }
+    }
+
+    increaseFontSize() {
+        if (this.currentFontSize < this.maxFontSize) {
+            this.currentFontSize += 2;
+            this.updateFontSize();
+        }
+    }
+
+    decreaseFontSize() {
+        if (this.currentFontSize > this.minFontSize) {
+            this.currentFontSize -= 2;
+            this.updateFontSize();
+        }
+    }
+
+    updateFontSize() {
+        const fontSizeDisplay = document.getElementById('fontSize');
+        if (fontSizeDisplay) {
+            fontSizeDisplay.textContent = `${this.currentFontSize}px`;
+        }
+        
+        const textContents = document.querySelectorAll('.text-content, .modal-text-content');
+        textContents.forEach(element => {
+            element.style.fontSize = `${this.currentFontSize}px`;
+        });
+
+        try {
+            localStorage.setItem('preferredFontSize', this.currentFontSize.toString());
+        } catch (e) {
+            console.warn('Could not save font size preference:', e);
+        }
+    }
+
+    setView(view) {
+        this.currentView = view;
+        const container = document.getElementById('cardsContainer');
+        const gridBtn = document.getElementById('gridView');
+        const listBtn = document.getElementById('listView');
+        
+        if (container) {
+            container.className = `cards-container ${view}-view`;
+        }
+        
+        if (gridBtn && listBtn) {
+            gridBtn.classList.toggle('active', view === 'grid');
+            listBtn.classList.toggle('active', view === 'list');
+        }
+        
+        try {
+            localStorage.setItem('preferredView', view);
+        } catch (e) {
+            console.warn('Could not save view preference:', e);
         }
     }
 

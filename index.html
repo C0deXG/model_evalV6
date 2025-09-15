@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 </head>
-<link rel="stylesheet" href="style.css">
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -79,6 +78,22 @@
 
         <!-- Cards Container -->
         <div id="cardsContainer" class="cards-container list-view"></div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination" class="pagination" style="display: none;">
+            <div class="pagination-info">
+                <span id="pageInfo">Page 1 of 1</span>
+                <span id="itemInfo">Showing 1-10 of 0 samples</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="prevPage" class="page-btn prev-btn" disabled>
+                    <span>← Previous</span>
+                </button>
+                <button id="nextPage" class="page-btn next-btn">
+                    <span>Next →</span>
+                </button>
+            </div>
+        </div>
     </main>
 
     <!-- Modal for Detailed Analysis -->
