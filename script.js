@@ -4,8 +4,11 @@ class AudioEvaluationApp {
         this.currentFontSize = 18;
         this.minFontSize = 12;
         this.maxFontSize = 28;
+        this.currentSampleIndex = 0;
         this.retryCount = 0;
         this.maxRetries = 3;
+        this.audioManager = new AudioManager();
+        this.currentView = 'list'; // Default to list view
         this.init();
     }
 
@@ -13,20 +16,31 @@ class AudioEvaluationApp {
         this.setupEventListeners();
         await this.loadData();
         this.renderCards();
+        this.updateStats();
     }
 
     setupEventListeners() {
-        const fontIncreaseBtn = document.getElementById('fontIncrease');
-        const fontDecreaseBtn = document.getElementById('fontDecrease');
-        const retryBtn = document.getElementById('retryBtn');
-
-        fontIncreaseBtn?.addEventListener('click', () => this.increaseFontSize());
-        fontDecreaseBtn?.addEventListener('click', () => this.decreaseFontSize());
-        retryBtn?.addEventListener('click', () => this.retryLoadData());
-
+        // Font controls
+        document.getElementById('fontIncrease')?.addEventListener('click', () => this.increaseFontSize());
+        document.getElementById('fontDecrease')?.addEventListener('click', () => this.decreaseFontSize());
+        
+        // View controls
+        document.getElementById('gridView')?.addEventListener('click', () => this.setView('grid'));
+        document.getElementById('listView')?.addEventListener('click', () => this.setView('list'));
+        
+        // Modal controls
+        document.getElementById('closeModal')?.addEventListener('click', () => this.closeModal());
+        document.getElementById('prevSample')?.addEventListener('click', () => this.navigateSample(-1));
+        document.getElementById('nextSample')?.addEventListener('click', () => this.navigateSample(1));
+        
+        // Retry button
+        document.getElementById('retryBtn')?.addEventListener('click', () => this.retryLoadData());
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'Escape') {
+                this.closeModal();
+            } else if (e.ctrlKey || e.metaKey) {
                 if (e.key === '=' || e.key === '+') {
                     e.preventDefault();
                     this.increaseFontSize();
@@ -34,6 +48,19 @@ class AudioEvaluationApp {
                     e.preventDefault();
                     this.decreaseFontSize();
                 }
+            } else if (e.key === 'ArrowLeft' && this.isModalOpen()) {
+                e.preventDefault();
+                this.navigateSample(-1);
+            } else if (e.key === 'ArrowRight' && this.isModalOpen()) {
+                e.preventDefault();
+                this.navigateSample(1);
+            }
+        });
+
+        // Close modal on overlay click
+        document.getElementById('modal')?.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.closeModal();
             }
         });
 
@@ -53,7 +80,6 @@ class AudioEvaluationApp {
         try {
             this.showLoading();
             
-            // Add cache busting for production
             const cacheBuster = `?v=${Date.now()}`;
             const response = await fetch(`evaluation_results_clean.json${cacheBuster}`, {
                 method: 'GET',
@@ -153,24 +179,30 @@ class AudioEvaluationApp {
             fontSizeDisplay.textContent = `${this.currentFontSize}px`;
         }
         
-        const textContents = document.querySelectorAll('.text-content');
+        const textContents = document.querySelectorAll('.text-content, .modal-text-content');
         textContents.forEach(element => {
             element.style.fontSize = `${this.currentFontSize}px`;
         });
 
-        // Store preference in localStorage
         localStorage.setItem('preferredFontSize', this.currentFontSize.toString());
     }
 
-    loadFontSizePreference() {
-        const saved = localStorage.getItem('preferredFontSize');
-        if (saved) {
-            const size = parseInt(saved);
-            if (size >= this.minFontSize && size <= this.maxFontSize) {
-                this.currentFontSize = size;
-                this.updateFontSize();
-            }
+    setView(view) {
+        this.currentView = view;
+        const container = document.getElementById('cardsContainer');
+        const gridBtn = document.getElementById('gridView');
+        const listBtn = document.getElementById('listView');
+        
+        if (container) {
+            container.className = `cards-container ${view}-view`;
         }
+        
+        if (gridBtn && listBtn) {
+            gridBtn.classList.toggle('active', view === 'grid');
+            listBtn.classList.toggle('active', view === 'list');
+        }
+        
+        localStorage.setItem('preferredView', view);
     }
 
     renderCards() {
@@ -194,19 +226,20 @@ class AudioEvaluationApp {
             });
         }
 
-        this.loadFontSizePreference();
+        this.loadPreferences();
     }
 
     createAudioCard(item, index) {
         const card = document.createElement('div');
         card.className = 'audio-card';
+        card.dataset.index = index;
         
         const sampleNumber = this.extractSampleNumber(item.path);
         
         card.innerHTML = `
             <div class="sample-info">Sample #${sampleNumber}</div>
             
-            <audio class="audio-player" controls preload="metadata" onerror="this.style.display='none'">
+            <audio class="audio-player" controls preload="metadata" data-index="${index}">
                 <source src="${item.path}" type="audio/wav">
                 <source src="${item.path.replace('.wav', '.mp3')}" type="audio/mpeg">
                 Your browser does not support the audio element.
@@ -218,12 +251,166 @@ class AudioEvaluationApp {
             </div>
             
             <div class="text-section prediction">
-                <h3>Prediction</h3>
+                <h3>Model Prediction</h3>
                 <div class="text-content" style="font-size: ${this.currentFontSize}px">${this.escapeHtml(item.prediction)}</div>
             </div>
         `;
         
+        // Add click handler for modal
+        card.addEventListener('click', (e) => {
+            if (!e.target.closest('audio')) {
+                this.openModal(index);
+            }
+        });
+        
+        // Add audio event handlers
+        const audio = card.querySelector('audio');
+        audio.addEventListener('play', () => {
+            this.audioManager.stopAllExcept(audio);
+            card.classList.add('playing');
+        });
+        
+        audio.addEventListener('pause', () => {
+            card.classList.remove('playing');
+        });
+        
+        audio.addEventListener('ended', () => {
+            card.classList.remove('playing');
+        });
+        
         return card;
+    }
+
+    openModal(index) {
+        if (!this.data || index < 0 || index >= this.data.length) return;
+        
+        this.currentSampleIndex = index;
+        const item = this.data[index];
+        const sampleNumber = this.extractSampleNumber(item.path);
+        
+        // Update modal content
+        document.getElementById('modalTitle').textContent = `Sample #${sampleNumber} Analysis`;
+        document.getElementById('modalGroundTruth').textContent = item.ground_truth;
+        document.getElementById('modalPrediction').textContent = item.prediction;
+        
+        // Set up modal audio
+        const modalAudio = document.getElementById('modalAudio');
+        modalAudio.src = item.path;
+        modalAudio.load();
+        
+        // Calculate error metrics
+        this.calculateErrorMetrics(item);
+        
+        // Show modal
+        document.getElementById('modal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Focus on modal
+        modalAudio.focus();
+    }
+
+    closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        
+        // Stop modal audio
+        const modalAudio = document.getElementById('modalAudio');
+        modalAudio.pause();
+        modalAudio.currentTime = 0;
+    }
+
+    navigateSample(direction) {
+        const newIndex = this.currentSampleIndex + direction;
+        if (newIndex >= 0 && newIndex < this.data.length) {
+            this.openModal(newIndex);
+        }
+    }
+
+    calculateErrorMetrics(item) {
+        // Simple character error rate calculation
+        const groundTruth = item.ground_truth;
+        const prediction = item.prediction;
+        
+        // Basic edit distance calculation
+        const distance = this.levenshteinDistance(groundTruth, prediction);
+        const cer = ((distance / groundTruth.length) * 100).toFixed(2);
+        
+        // Simple word error rate (approximation)
+        const gtWords = groundTruth.split(/\s+/).length;
+        const predWords = prediction.split(/\s+/).length;
+        const wordDistance = Math.abs(gtWords - predWords) + Math.floor(distance / 10);
+        const wer = ((wordDistance / gtWords) * 100).toFixed(2);
+        
+        document.getElementById('cer').textContent = `${cer}%`;
+        document.getElementById('wer').textContent = `${wer}%`;
+    }
+
+    levenshteinDistance(str1, str2) {
+        const matrix = [];
+        
+        for (let i = 0; i <= str2.length; i++) {
+            matrix[i] = [i];
+        }
+        
+        for (let j = 0; j <= str1.length; j++) {
+            matrix[0][j] = j;
+        }
+        
+        for (let i = 1; i <= str2.length; i++) {
+            for (let j = 1; j <= str1.length; j++) {
+                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        
+        return matrix[str2.length][str1.length];
+    }
+
+    updateStats() {
+        const totalSamples = this.data ? this.data.length : 0;
+        
+        document.getElementById('totalSamples').textContent = totalSamples;
+        
+        // Calculate overall WER (simplified)
+        if (this.data && this.data.length > 0) {
+            const totalErrors = this.data.reduce((sum, item) => {
+                const distance = this.levenshteinDistance(item.ground_truth, item.prediction);
+                return sum + distance;
+            }, 0);
+            
+            const totalChars = this.data.reduce((sum, item) => sum + item.ground_truth.length, 0);
+            const overallWER = ((totalErrors / totalChars) * 100).toFixed(2);
+            
+            document.getElementById('currentWER').textContent = `${overallWER}%`;
+        }
+    }
+
+    loadPreferences() {
+        // Load font size
+        const savedFontSize = localStorage.getItem('preferredFontSize');
+        if (savedFontSize) {
+            const size = parseInt(savedFontSize);
+            if (size >= this.minFontSize && size <= this.maxFontSize) {
+                this.currentFontSize = size;
+                this.updateFontSize();
+            }
+        }
+        
+        // Load view preference
+        const savedView = localStorage.getItem('preferredView');
+        if (savedView && (savedView === 'grid' || savedView === 'list')) {
+            this.setView(savedView);
+        } else {
+            // Default to list view
+            this.setView('list');
+        }
     }
 
     extractSampleNumber(path) {
@@ -240,16 +427,47 @@ class AudioEvaluationApp {
         return div.innerHTML;
     }
 
-    updateStats() {
-        const stats = document.getElementById('stats');
-        if (stats && this.data) {
-            const totalSamples = this.data.length;
-            const currentTime = new Date().toLocaleString();
-            stats.innerHTML = `
-                <div>Total Samples: ${totalSamples}</div>
-                <div>Last Updated: ${currentTime}</div>
-            `;
+    isModalOpen() {
+        return document.getElementById('modal').style.display === 'flex';
+    }
+}
+
+// Audio Manager class to handle multiple audio instances
+class AudioManager {
+    constructor() {
+        this.playingAudios = new Set();
+    }
+
+    stopAllExcept(currentAudio) {
+        this.playingAudios.forEach(audio => {
+            if (audio !== currentAudio && !audio.paused) {
+                audio.pause();
+                audio.currentTime = 0;
+                // Remove playing class from parent card
+                const card = audio.closest('.audio-card');
+                if (card) {
+                    card.classList.remove('playing');
+                }
+            }
+        });
+        this.playingAudios.clear();
+        if (currentAudio) {
+            this.playingAudios.add(currentAudio);
         }
+    }
+
+    registerAudio(audio) {
+        audio.addEventListener('play', () => {
+            this.stopAllExcept(audio);
+        });
+        
+        audio.addEventListener('pause', () => {
+            this.playingAudios.delete(audio);
+        });
+        
+        audio.addEventListener('ended', () => {
+            this.playingAudios.delete(audio);
+        });
     }
 }
 
@@ -279,16 +497,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize app
     new AudioEvaluationApp();
 });
-
-// Service Worker registration for better caching (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}

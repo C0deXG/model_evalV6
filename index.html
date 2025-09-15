@@ -3,51 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Model Evaluation Results</title>
+    <title>Audio Model Evaluation Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <h1>Audio Model Evaluation Results</h1>
-            <div class="controls">
-                <button id="fontIncrease" class="font-btn" title="Increase font size (Ctrl/Cmd + +)">
-                    <span class="btn-icon">🔍+</span>
-                    <span class="btn-text">Increase Font</span>
-                </button>
-                <button id="fontDecrease" class="font-btn" title="Decrease font size (Ctrl/Cmd + -)">
-                    <span class="btn-icon">🔍-</span>
-                    <span class="btn-text">Decrease Font</span>
-                </button>
-                <div class="font-size-display">
-                    <span id="fontSize">18px</span>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-left">
+                <h1>Audio Model Evaluation Dashboard</h1>
+                <div class="model-info">
+                    <span class="model-name">Quran ASR Model</span>
+                    <span class="model-version">v1.0</span>
+                </div>
+            </div>
+            <div class="nav-controls">
+                <div class="font-controls">
+                    <button id="fontIncrease" class="control-btn" title="Increase font size">
+                        <span class="btn-icon">🔍+</span>
+                        <span class="btn-text">Larger</span>
+                    </button>
+                    <button id="fontDecrease" class="control-btn" title="Decrease font size">
+                        <span class="btn-icon">🔍-</span>
+                        <span class="btn-text">Smaller</span>
+                    </button>
+                    <div class="font-size-display">
+                        <span id="fontSize">18px</span>
+                    </div>
+                </div>
+                <div class="view-controls">
+                    <button id="gridView" class="view-btn" title="Grid view">
+                        <span class="btn-icon">⊞</span>
+                    </button>
+                    <button id="listView" class="view-btn active" title="List view">
+                        <span class="btn-icon">☰</span>
+                    </button>
                 </div>
             </div>
         </div>
-    </header>
-    
-    <main>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Total Samples</span>
+                <span class="stat-value" id="totalSamples">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Current WER</span>
+                <span class="stat-value" id="currentWER">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Status</span>
+                <span class="stat-value status-ready" id="status">Ready</span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
         <div id="loading" class="loading-container">
             <div class="loading-spinner"></div>
             <div class="loading-text">Loading evaluation data...</div>
         </div>
+
+        <!-- Error State -->
         <div id="error" class="error-container" style="display: none;">
             <div class="error-icon">⚠️</div>
             <div class="error-text">Failed to load data. Please refresh the page.</div>
             <button id="retryBtn" class="retry-btn">Retry</button>
         </div>
-        <div id="cardsContainer" class="cards-container"></div>
+
+        <!-- Cards Container -->
+        <div id="cardsContainer" class="cards-container list-view"></div>
     </main>
-    
-    <footer>
-        <div class="footer-content">
-            <p>Audio Model Evaluation Dashboard</p>
-            <div class="stats" id="stats"></div>
+
+    <!-- Modal for Detailed Analysis -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Sample Analysis</h2>
+                <button id="closeModal" class="close-btn" title="Close">
+                    <span>×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-audio-section">
+                    <div class="audio-container">
+                        <audio id="modalAudio" class="modal-audio-player" controls preload="metadata">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>
+                
+                <div class="modal-text-sections">
+                    <div class="modal-text-section ground-truth">
+                        <h3>Ground Truth</h3>
+                        <div class="modal-text-content" id="modalGroundTruth"></div>
+                    </div>
+                    
+                    <div class="modal-text-section prediction">
+                        <h3>Model Prediction</h3>
+                        <div class="modal-text-content" id="modalPrediction"></div>
+                    </div>
+                </div>
+
+                <div class="modal-analysis">
+                    <div class="analysis-section">
+                        <h4>Error Analysis</h4>
+                        <div class="error-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Character Error Rate:</span>
+                                <span class="metric-value" id="cer">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Word Error Rate:</span>
+                                <span class="metric-value" id="wer">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="prevSample" class="nav-btn prev-btn" title="Previous sample">
+                    <span>← Previous</span>
+                </button>
+                <button id="nextSample" class="nav-btn next-btn" title="Next sample">
+                    <span>Next →</span>
+                </button>
+            </div>
         </div>
-    </footer>
-    
+    </div>
+
+    <!-- Audio Manager -->
+    <div id="audioManager" style="display: none;"></div>
+
     <script src="script.js"></script>
 </body>
 </html>
