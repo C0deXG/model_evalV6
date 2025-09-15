@@ -30,16 +30,16 @@
     --info: #3b82f6;
     
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     
     /* Border radius */
     --radius-sm: 0.375rem;
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
     
-    /* Transitions */
+    /* Transitions - simplified for Safari */
     --transition: all 0.2s ease;
 }
 
@@ -51,6 +51,10 @@ body {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000;
 }
 
 /* Navigation */
@@ -61,6 +65,9 @@ body {
     box-shadow: var(--shadow-sm);
     position: relative;
     z-index: 50;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .nav-content {
@@ -131,6 +138,9 @@ body {
     align-items: center;
     gap: 0.5rem;
     box-shadow: var(--shadow-sm);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .control-btn:hover {
@@ -177,6 +187,8 @@ body {
     justify-content: center;
     width: 40px;
     height: 40px;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
 .view-btn:hover {
@@ -245,19 +257,41 @@ body {
     border: 1px solid var(--border-light);
 }
 
+/* Simplified loading spinner for Safari compatibility */
 .loading-spinner {
     width: 48px;
     height: 48px;
     border: 4px solid var(--border-light);
     border-top: 4px solid var(--accent-blue);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
     margin: 0 auto 1.5rem;
+    /* Simplified animation for Safari */
+    animation: spin 1s linear infinite;
+    -webkit-animation: spin 1s linear infinite;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
+/* Simplified keyframes for Safari */
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% { 
+        transform: rotate(0deg);
+        -webkit-transform: rotate(0deg);
+    }
+    100% { 
+        transform: rotate(360deg);
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+@-webkit-keyframes spin {
+    0% { 
+        -webkit-transform: rotate(0deg);
+    }
+    100% { 
+        -webkit-transform: rotate(360deg);
+    }
 }
 
 .loading-text, .error-text {
@@ -282,6 +316,9 @@ body {
     font-weight: 600;
     transition: var(--transition);
     box-shadow: var(--shadow-sm);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .retry-btn:hover {
@@ -304,7 +341,7 @@ body {
     grid-template-columns: 1fr;
 }
 
-/* Audio Card */
+/* Audio Card - Safari optimized */
 .audio-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -315,6 +352,9 @@ body {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .audio-card::before {
@@ -325,10 +365,13 @@ body {
     right: 0;
     height: 4px;
     background: linear-gradient(90deg, var(--accent-blue), var(--accent-green), var(--accent-red));
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
 .audio-card:hover {
     transform: translateY(-2px);
+    -webkit-transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     border-color: var(--border-medium);
 }
@@ -357,9 +400,11 @@ body {
     outline: none;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
-/* Audio player styling */
+/* Simplified audio player styling for Safari */
 .audio-player::-webkit-media-controls-panel {
     background-color: var(--bg-card) !important;
     border-radius: var(--radius-md);
@@ -404,6 +449,8 @@ body {
     height: 8px;
     border-radius: 50%;
     background: var(--accent-blue);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
 .text-content {
@@ -419,6 +466,9 @@ body {
     font-size: 18px;
     transition: var(--transition);
     color: var(--text-primary);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 /* Clean hover effects - no color changes, just subtle border */
@@ -462,7 +512,7 @@ body {
     background: var(--accent-red);
 }
 
-/* Modal Styles */
+/* Modal Styles - Safari optimized */
 .modal {
     position: fixed;
     top: 0;
@@ -474,6 +524,9 @@ body {
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
 }
 
 .modal-overlay {
@@ -483,7 +536,11 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
+    /* Simplified backdrop filter for Safari */
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
 .modal-content {
@@ -498,6 +555,9 @@ body {
     position: relative;
     z-index: 1001;
     border: 1px solid var(--border-light);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .modal-header {
@@ -529,6 +589,9 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .close-btn:hover {
@@ -541,6 +604,8 @@ body {
     padding: 2rem;
     overflow-y: auto;
     flex: 1;
+    /* Safari-specific optimizations */
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-audio-section {
@@ -561,6 +626,8 @@ body {
     border-radius: var(--radius-md);
     background: var(--bg-card);
     border: 1px solid var(--border-light);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
 }
 
 .modal-text-sections {
@@ -588,6 +655,9 @@ body {
     font-size: 18px;
     min-height: 120px;
     color: var(--text-primary);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .modal-text-section.ground-truth .modal-text-content {
@@ -674,6 +744,9 @@ body {
     gap: 0.5rem;
     background: var(--bg-card);
     color: var(--text-primary);
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    will-change: transform;
 }
 
 .nav-btn:hover {
@@ -755,5 +828,28 @@ body {
     
     .modal-text-content {
         font-size: 16px;
+    }
+}
+
+/* Safari-specific media queries */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .audio-card:hover {
+        transform: translateY(-1px);
+        -webkit-transform: translateY(-1px);
+    }
+    
+    .control-btn:hover {
+        transform: translateY(0);
+        -webkit-transform: translateY(0);
+    }
+    
+    .retry-btn:hover {
+        transform: translateY(0);
+        -webkit-transform: translateY(0);
+    }
+    
+    .nav-btn:hover {
+        transform: translateY(0);
+        -webkit-transform: translateY(0);
     }
 }

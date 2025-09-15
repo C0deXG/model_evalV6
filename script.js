@@ -9,6 +9,7 @@ class AudioEvaluationApp {
         this.maxRetries = 3;
         this.audioManager = new AudioManager();
         this.currentView = 'list'; // Default to list view
+        this.isLoading = false;
         this.init();
     }
 
@@ -21,26 +22,53 @@ class AudioEvaluationApp {
 
     setupEventListeners() {
         // Font controls
-        document.getElementById('fontIncrease')?.addEventListener('click', () => this.increaseFontSize());
-        document.getElementById('fontDecrease')?.addEventListener('click', () => this.decreaseFontSize());
+        const fontIncreaseBtn = document.getElementById('fontIncrease');
+        const fontDecreaseBtn = document.getElementById('fontDecrease');
+        
+        if (fontIncreaseBtn) {
+            fontIncreaseBtn.addEventListener('click', () => this.increaseFontSize());
+        }
+        if (fontDecreaseBtn) {
+            fontDecreaseBtn.addEventListener('click', () => this.decreaseFontSize());
+        }
         
         // View controls
-        document.getElementById('gridView')?.addEventListener('click', () => this.setView('grid'));
-        document.getElementById('listView')?.addEventListener('click', () => this.setView('list'));
+        const gridViewBtn = document.getElementById('gridView');
+        const listViewBtn = document.getElementById('listView');
+        
+        if (gridViewBtn) {
+            gridViewBtn.addEventListener('click', () => this.setView('grid'));
+        }
+        if (listViewBtn) {
+            listViewBtn.addEventListener('click', () => this.setView('list'));
+        }
         
         // Modal controls
-        document.getElementById('closeModal')?.addEventListener('click', () => this.closeModal());
-        document.getElementById('prevSample')?.addEventListener('click', () => this.navigateSample(-1));
-        document.getElementById('nextSample')?.addEventListener('click', () => this.navigateSample(1));
+        const closeModalBtn = document.getElementById('closeModal');
+        const prevSampleBtn = document.getElementById('prevSample');
+        const nextSampleBtn = document.getElementById('nextSample');
+        
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', () => this.closeModal());
+        }
+        if (prevSampleBtn) {
+            prevSampleBtn.addEventListener('click', () => this.navigateSample(-1));
+        }
+        if (nextSampleBtn) {
+            nextSampleBtn.addEventListener('click', () => this.navigateSample(1));
+        }
         
         // Retry button
-        document.getElementById('retryBtn')?.addEventListener('click', () => this.retryLoadData());
+        const retryBtn = document.getElementById('retryBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => this.retryLoadData());
+        }
         
-        // Keyboard shortcuts
+        // Keyboard shortcuts - Safari optimized
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeModal();
-            } else if (e.ctrlKey || e.metaKey) {
+            } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
                 if (e.key === '=' || e.key === '+') {
                     e.preventDefault();
                     this.increaseFontSize();
@@ -58,15 +86,18 @@ class AudioEvaluationApp {
         });
 
         // Close modal on overlay click
-        document.getElementById('modal')?.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-overlay')) {
-                this.closeModal();
-            }
-        });
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    this.closeModal();
+                }
+            });
+        }
 
-        // Handle online/offline events
+        // Handle online/offline events - Safari optimized
         window.addEventListener('online', () => {
-            if (!this.data) {
+            if (!this.data && !this.isLoading) {
                 this.retryLoadData();
             }
         });
@@ -74,20 +105,52 @@ class AudioEvaluationApp {
         window.addEventListener('offline', () => {
             this.showError('You are offline. Please check your connection.');
         });
+
+        // Safari-specific optimizations
+        if (navigator.userAgent.indexOf('Safari') !== -1 && navigator.userAgent.indexOf('Chrome') === -1) {
+            this.optimizeForSafari();
+        }
+    }
+
+    optimizeForSafari() {
+        // Disable problematic CSS animations on Safari
+        const style = document.createElement('style');
+        style.textContent = `
+            .audio-card:hover {
+                transform: translateY(-1px) !important;
+                -webkit-transform: translateY(-1px) !important;
+            }
+            .control-btn:hover,
+            .retry-btn:hover,
+            .nav-btn:hover {
+                transform: translateY(0) !important;
+                -webkit-transform: translateY(0) !important;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     async loadData() {
+        if (this.isLoading) return;
+        
         try {
+            this.isLoading = true;
             this.showLoading();
             
-            const cacheBuster = `?v=${Date.now()}`;
-            const response = await fetch(`evaluation_results_clean.json${cacheBuster}`, {
+            // Safari-optimized fetch with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(`evaluation_results_clean.json?v=${Date.now()}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Cache-Control': 'no-cache'
-                }
+                },
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -108,15 +171,17 @@ class AudioEvaluationApp {
         } catch (error) {
             console.error('Error loading data:', error);
             this.handleLoadError(error);
+        } finally {
+            this.isLoading = false;
         }
     }
 
     async retryLoadData() {
-        if (this.retryCount < this.maxRetries) {
+        if (this.retryCount < this.maxRetries && !this.isLoading) {
             this.retryCount++;
             console.log(`Retry attempt ${this.retryCount}/${this.maxRetries}`);
             await this.loadData();
-        } else {
+        } else if (this.retryCount >= this.maxRetries) {
             this.showError('Failed to load data after multiple attempts. Please refresh the page.');
         }
     }
@@ -124,7 +189,9 @@ class AudioEvaluationApp {
     handleLoadError(error) {
         let errorMessage = 'Failed to load evaluation data.';
         
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out. Please check your connection and try again.';
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
             errorMessage = 'Network error. Please check your connection and try again.';
         } else if (error.message.includes('404')) {
             errorMessage = 'Data file not found. Please check if the file exists.';
@@ -184,7 +251,11 @@ class AudioEvaluationApp {
             element.style.fontSize = `${this.currentFontSize}px`;
         });
 
-        localStorage.setItem('preferredFontSize', this.currentFontSize.toString());
+        try {
+            localStorage.setItem('preferredFontSize', this.currentFontSize.toString());
+        } catch (e) {
+            console.warn('Could not save font size preference:', e);
+        }
     }
 
     setView(view) {
@@ -202,7 +273,11 @@ class AudioEvaluationApp {
             listBtn.classList.toggle('active', view === 'list');
         }
         
-        localStorage.setItem('preferredView', view);
+        try {
+            localStorage.setItem('preferredView', view);
+        } catch (e) {
+            console.warn('Could not save view preference:', e);
+        }
     }
 
     renderCards() {
@@ -220,9 +295,12 @@ class AudioEvaluationApp {
         if (container) {
             container.innerHTML = '';
             
-            this.data.forEach((item, index) => {
-                const card = this.createAudioCard(item, index);
-                container.appendChild(card);
+            // Safari-optimized rendering with requestAnimationFrame
+            requestAnimationFrame(() => {
+                this.data.forEach((item, index) => {
+                    const card = this.createAudioCard(item, index);
+                    container.appendChild(card);
+                });
             });
         }
 
@@ -263,20 +341,28 @@ class AudioEvaluationApp {
             }
         });
         
-        // Add audio event handlers
+        // Add audio event handlers - Safari optimized
         const audio = card.querySelector('audio');
-        audio.addEventListener('play', () => {
-            this.audioManager.stopAllExcept(audio);
-            card.classList.add('playing');
-        });
-        
-        audio.addEventListener('pause', () => {
-            card.classList.remove('playing');
-        });
-        
-        audio.addEventListener('ended', () => {
-            card.classList.remove('playing');
-        });
+        if (audio) {
+            audio.addEventListener('play', () => {
+                this.audioManager.stopAllExcept(audio);
+                card.classList.add('playing');
+            });
+            
+            audio.addEventListener('pause', () => {
+                card.classList.remove('playing');
+            });
+            
+            audio.addEventListener('ended', () => {
+                card.classList.remove('playing');
+            });
+            
+            // Safari-specific audio optimizations
+            audio.addEventListener('error', (e) => {
+                console.warn('Audio error:', e);
+                card.classList.add('audio-error');
+            });
+        }
         
         return card;
     }
@@ -289,34 +375,50 @@ class AudioEvaluationApp {
         const sampleNumber = this.extractSampleNumber(item.path);
         
         // Update modal content
-        document.getElementById('modalTitle').textContent = `Sample #${sampleNumber} Analysis`;
-        document.getElementById('modalGroundTruth').textContent = item.ground_truth;
-        document.getElementById('modalPrediction').textContent = item.prediction;
+        const modalTitle = document.getElementById('modalTitle');
+        const modalGroundTruth = document.getElementById('modalGroundTruth');
+        const modalPrediction = document.getElementById('modalPrediction');
+        
+        if (modalTitle) modalTitle.textContent = `Sample #${sampleNumber} Analysis`;
+        if (modalGroundTruth) modalGroundTruth.textContent = item.ground_truth;
+        if (modalPrediction) modalPrediction.textContent = item.prediction;
         
         // Set up modal audio
         const modalAudio = document.getElementById('modalAudio');
-        modalAudio.src = item.path;
-        modalAudio.load();
+        if (modalAudio) {
+            modalAudio.src = item.path;
+            modalAudio.load();
+        }
         
         // Calculate error metrics
         this.calculateErrorMetrics(item);
         
         // Show modal
-        document.getElementById('modal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        
-        // Focus on modal
-        modalAudio.focus();
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Safari-specific modal optimizations
+            requestAnimationFrame(() => {
+                modal.focus();
+            });
+        }
     }
 
     closeModal() {
-        document.getElementById('modal').style.display = 'none';
-        document.body.style.overflow = 'auto';
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
         
         // Stop modal audio
         const modalAudio = document.getElementById('modalAudio');
-        modalAudio.pause();
-        modalAudio.currentTime = 0;
+        if (modalAudio) {
+            modalAudio.pause();
+            modalAudio.currentTime = 0;
+        }
     }
 
     navigateSample(direction) {
@@ -341,8 +443,11 @@ class AudioEvaluationApp {
         const wordDistance = Math.abs(gtWords - predWords) + Math.floor(distance / 10);
         const wer = ((wordDistance / gtWords) * 100).toFixed(2);
         
-        document.getElementById('cer').textContent = `${cer}%`;
-        document.getElementById('wer').textContent = `${wer}%`;
+        const cerElement = document.getElementById('cer');
+        const werElement = document.getElementById('wer');
+        
+        if (cerElement) cerElement.textContent = `${cer}%`;
+        if (werElement) werElement.textContent = `${wer}%`;
     }
 
     levenshteinDistance(str1, str2) {
@@ -376,7 +481,10 @@ class AudioEvaluationApp {
     updateStats() {
         const totalSamples = this.data ? this.data.length : 0;
         
-        document.getElementById('totalSamples').textContent = totalSamples;
+        const totalSamplesElement = document.getElementById('totalSamples');
+        if (totalSamplesElement) {
+            totalSamplesElement.textContent = totalSamples;
+        }
         
         // Calculate overall WER (simplified)
         if (this.data && this.data.length > 0) {
@@ -388,27 +496,39 @@ class AudioEvaluationApp {
             const totalChars = this.data.reduce((sum, item) => sum + item.ground_truth.length, 0);
             const overallWER = ((totalErrors / totalChars) * 100).toFixed(2);
             
-            document.getElementById('currentWER').textContent = `${overallWER}%`;
+            const currentWERElement = document.getElementById('currentWER');
+            if (currentWERElement) {
+                currentWERElement.textContent = `${overallWER}%`;
+            }
         }
     }
 
     loadPreferences() {
         // Load font size
-        const savedFontSize = localStorage.getItem('preferredFontSize');
-        if (savedFontSize) {
-            const size = parseInt(savedFontSize);
-            if (size >= this.minFontSize && size <= this.maxFontSize) {
-                this.currentFontSize = size;
-                this.updateFontSize();
+        try {
+            const savedFontSize = localStorage.getItem('preferredFontSize');
+            if (savedFontSize) {
+                const size = parseInt(savedFontSize);
+                if (size >= this.minFontSize && size <= this.maxFontSize) {
+                    this.currentFontSize = size;
+                    this.updateFontSize();
+                }
             }
+        } catch (e) {
+            console.warn('Could not load font size preference:', e);
         }
         
         // Load view preference
-        const savedView = localStorage.getItem('preferredView');
-        if (savedView && (savedView === 'grid' || savedView === 'list')) {
-            this.setView(savedView);
-        } else {
-            // Default to list view
+        try {
+            const savedView = localStorage.getItem('preferredView');
+            if (savedView && (savedView === 'grid' || savedView === 'list')) {
+                this.setView(savedView);
+            } else {
+                // Default to list view
+                this.setView('list');
+            }
+        } catch (e) {
+            console.warn('Could not load view preference:', e);
             this.setView('list');
         }
     }
@@ -428,11 +548,12 @@ class AudioEvaluationApp {
     }
 
     isModalOpen() {
-        return document.getElementById('modal').style.display === 'flex';
+        const modal = document.getElementById('modal');
+        return modal && modal.style.display === 'flex';
     }
 }
 
-// Audio Manager class to handle multiple audio instances
+// Audio Manager class to handle multiple audio instances - Safari optimized
 class AudioManager {
     constructor() {
         this.playingAudios = new Set();
@@ -471,9 +592,9 @@ class AudioManager {
     }
 }
 
-// Initialize the app when the page loads
+// Initialize the app when the page loads - Safari optimized
 document.addEventListener('DOMContentLoaded', () => {
-    // Add loading animation
+    // Add loading animation - Safari optimized
     const loading = document.getElementById('loading');
     if (loading) {
         let dots = 0;
@@ -494,6 +615,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
 
-    // Initialize app
-    new AudioEvaluationApp();
+    // Initialize app with error handling
+    try {
+        new AudioEvaluationApp();
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+        const errorContainer = document.getElementById('error');
+        if (errorContainer) {
+            errorContainer.style.display = 'block';
+            const errorText = errorContainer.querySelector('.error-text');
+            if (errorText) {
+                errorText.textContent = 'Failed to initialize the application. Please refresh the page.';
+            }
+        }
+    }
 });
