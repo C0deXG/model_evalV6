@@ -1,0 +1,227 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+header h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.font-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+}
+
+.font-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#fontSize {
+    background: #ecf0f1;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 60px;
+    text-align: center;
+}
+
+main {
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+#loading {
+    text-align: center;
+    font-size: 1.2rem;
+    color: white;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 2rem 0;
+}
+
+.cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.audio-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-height: 400px;
+}
+
+.audio-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.audio-player {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+    outline: none;
+}
+
+.audio-player::-webkit-media-controls-panel {
+    background-color: #f8f9fa;
+}
+
+.sample-info {
+    margin-bottom: 1.5rem;
+    padding: 0.8rem;
+    background: #e8f4f8;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.text-section {
+    margin-bottom: 1.5rem;
+}
+
+.text-section h3 {
+    color: #2c3e50;
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 0.5rem;
+}
+
+.text-content {
+    background: #f8f9fa;
+    padding: 1.2rem;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.8;
+    min-height: 80px;
+    font-family: 'Inter', sans-serif;
+    font-size: 18px; /* Default font size for ground truth and prediction */
+}
+
+.ground-truth .text-content {
+    border-left-color: #27ae60;
+}
+
+.prediction .text-content {
+    border-left-color: #e74c3c;
+}
+
+.ground-truth h3 {
+    color: #27ae60;
+    border-bottom-color: #27ae60;
+}
+
+.prediction h3 {
+    color: #e74c3c;
+    border-bottom-color: #e74c3c;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .cards-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .audio-card {
+        min-height: 350px;
+    }
+}
+
+@media (max-width: 768px) {
+    header {
+        padding: 1rem;
+    }
+    
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    main {
+        padding: 1rem;
+    }
+    
+    .audio-card {
+        padding: 1.5rem;
+        min-height: 300px;
+    }
+    
+    .controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .font-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .text-content {
+        font-size: 16px; /* Slightly smaller on mobile */
+        padding: 1rem;
+    }
+    
+    .audio-card {
+        padding: 1rem;
+        min-height: 250px;
+    }
+}
