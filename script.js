@@ -10,6 +10,7 @@ class AudioEvaluationApp {
         this.audioManager = new AudioManager();
         this.currentView = 'list'; // Default to list view
         this.isLoading = false;
+        this.intersectionObserver = null;
         this.init();
     }
 
@@ -105,29 +106,6 @@ class AudioEvaluationApp {
         window.addEventListener('offline', () => {
             this.showError('You are offline. Please check your connection.');
         });
-
-        // Safari-specific optimizations
-        if (navigator.userAgent.indexOf('Safari') !== -1 && navigator.userAgent.indexOf('Chrome') === -1) {
-            this.optimizeForSafari();
-        }
-    }
-
-    optimizeForSafari() {
-        // Disable problematic CSS animations on Safari
-        const style = document.createElement('style');
-        style.textContent = `
-            .audio-card:hover {
-                transform: translateY(-1px) !important;
-                -webkit-transform: translateY(-1px) !important;
-            }
-            .control-btn:hover,
-            .retry-btn:hover,
-            .nav-btn:hover {
-                transform: translateY(0) !important;
-                -webkit-transform: translateY(0) !important;
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     async loadData() {
@@ -280,6 +258,7 @@ class AudioEvaluationApp {
         }
     }
 
+    // Batch rendering to prevent layer explosion
     renderCards() {
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
@@ -292,19 +271,34 @@ class AudioEvaluationApp {
         if (loading) loading.style.display = 'none';
         if (error) error.style.display = 'none';
         
-        if (container) {
-            container.innerHTML = '';
-            
-            // Safari-optimized rendering with requestAnimationFrame
-            requestAnimationFrame(() => {
-                this.data.forEach((item, index) => {
-                    const card = this.createAudioCard(item, index);
-                    container.appendChild(card);
-                });
-            });
-        }
+        if (!container) return;
 
-        this.loadPreferences();
+        container.innerHTML = '';
+
+        const batchSize = 20; // Render 20 cards at a time
+        let i = 0;
+
+        const addBatch = () => {
+            const end = Math.min(i + batchSize, this.data.length);
+            for (; i < end; i++) {
+                const card = this.createAudioCard(this.data[i], i);
+                container.appendChild(card);
+            }
+            if (i < this.data.length) {
+                // Use requestIdleCallback if available, otherwise setTimeout
+                if (window.requestIdleCallback) {
+                    requestIdleCallback(addBatch);
+                } else {
+                    setTimeout(addBatch, 16); // ~60fps
+                }
+            } else {
+                // All cards rendered, now set up lazy loading
+                this.setupCardObservers();
+                this.loadPreferences();
+            }
+        };
+
+        addBatch();
     }
 
     createAudioCard(item, index) {
@@ -314,12 +308,11 @@ class AudioEvaluationApp {
         
         const sampleNumber = this.extractSampleNumber(item.path);
         
+        // NO <source> tags up front - lazy load them
         card.innerHTML = `
             <div class="sample-info">Sample #${sampleNumber}</div>
             
-            <audio class="audio-player" controls preload="metadata" data-index="${index}">
-                <source src="${item.path}" type="audio/wav">
-                <source src="${item.path.replace('.wav', '.mp3')}" type="audio/mpeg">
+            <audio class="audio-player" controls preload="none" data-path="${item.path}" data-index="${index}">
                 Your browser does not support the audio element.
             </audio>
             
@@ -341,10 +334,27 @@ class AudioEvaluationApp {
             }
         });
         
-        // Add audio event handlers - Safari optimized
+        // Add audio event handlers - lazy load sources
         const audio = card.querySelector('audio');
         if (audio) {
+            // Load sources only on first user play
+            const ensureSources = () => {
+                if (audio.dataset.loaded) return;
+                const path = audio.getAttribute('data-path');
+                const s1 = document.createElement('source');
+                s1.src = path;
+                s1.type = 'audio/wav';
+                const s2 = document.createElement('source');
+                s2.src = path.replace('.wav', '.mp3');
+                s2.type = 'audio/mpeg';
+                audio.appendChild(s1);
+                audio.appendChild(s2);
+                audio.dataset.loaded = '1';
+                audio.load();
+            };
+            
             audio.addEventListener('play', () => {
+                ensureSources();
                 this.audioManager.stopAllExcept(audio);
                 card.classList.add('playing');
             });
@@ -365,6 +375,42 @@ class AudioEvaluationApp {
         }
         
         return card;
+    }
+
+    // Set up intersection observer for lazy loading
+    setupCardObservers() {
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+        }
+
+        this.intersectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const audio = entry.target.querySelector('audio');
+                    if (audio && !audio.dataset.loaded) {
+                        // Preload audio when card comes into view
+                        const path = audio.getAttribute('data-path');
+                        const s1 = document.createElement('source');
+                        s1.src = path;
+                        s1.type = 'audio/wav';
+                        const s2 = document.createElement('source');
+                        s2.src = path.replace('.wav', '.mp3');
+                        s2.type = 'audio/mpeg';
+                        audio.appendChild(s1);
+                        audio.appendChild(s2);
+                        audio.dataset.loaded = '1';
+                        audio.load();
+                    }
+                }
+            });
+        }, { 
+            rootMargin: '200px' // Start loading when 200px away from viewport
+        });
+
+        // Observe all audio cards
+        document.querySelectorAll('.audio-card').forEach(card => {
+            this.intersectionObserver.observe(card);
+        });
     }
 
     openModal(index) {
@@ -398,11 +444,6 @@ class AudioEvaluationApp {
         if (modal) {
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
-            
-            // Safari-specific modal optimizations
-            requestAnimationFrame(() => {
-                modal.focus();
-            });
         }
     }
 
@@ -550,6 +591,13 @@ class AudioEvaluationApp {
     isModalOpen() {
         const modal = document.getElementById('modal');
         return modal && modal.style.display === 'flex';
+    }
+
+    // Cleanup method
+    destroy() {
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+        }
     }
 }
 

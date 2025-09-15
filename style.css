@@ -51,10 +51,7 @@ body {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    -webkit-perspective: 1000;
+    /* NO GPU layer promotion on body */
 }
 
 /* Navigation */
@@ -65,9 +62,7 @@ body {
     box-shadow: var(--shadow-sm);
     position: relative;
     z-index: 50;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .nav-content {
@@ -138,19 +133,16 @@ body {
     align-items: center;
     gap: 0.5rem;
     box-shadow: var(--shadow-sm);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .control-btn:hover {
     background: #2563eb;
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
 .control-btn:active {
-    transform: translateY(0);
+    background: #1d4ed8;
 }
 
 .font-size-display {
@@ -187,8 +179,7 @@ body {
     justify-content: center;
     width: 40px;
     height: 40px;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
 .view-btn:hover {
@@ -257,7 +248,7 @@ body {
     border: 1px solid var(--border-light);
 }
 
-/* Simplified loading spinner for Safari compatibility */
+/* Simplified loading spinner - NO GPU layer promotion */
 .loading-spinner {
     width: 48px;
     height: 48px;
@@ -265,12 +256,8 @@ body {
     border-top: 4px solid var(--accent-blue);
     border-radius: 50%;
     margin: 0 auto 1.5rem;
-    /* Simplified animation for Safari */
     animation: spin 1s linear infinite;
     -webkit-animation: spin 1s linear infinite;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
 }
 
 /* Simplified keyframes for Safari */
@@ -316,15 +303,16 @@ body {
     font-weight: 600;
     transition: var(--transition);
     box-shadow: var(--shadow-sm);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .retry-btn:hover {
     background: #2563eb;
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
+}
+
+.retry-btn:active {
+    background: #1d4ed8;
 }
 
 /* Cards Container */
@@ -341,7 +329,7 @@ body {
     grid-template-columns: 1fr;
 }
 
-/* Audio Card - Safari optimized */
+/* Audio Card - NO GPU layer promotion */
 .audio-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -352,9 +340,7 @@ body {
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .audio-card::before {
@@ -365,13 +351,11 @@ body {
     right: 0;
     height: 4px;
     background: linear-gradient(90deg, var(--accent-blue), var(--accent-green), var(--accent-red));
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
+/* Safe hover effects - NO transforms that force GPU layers */
 .audio-card:hover {
-    transform: translateY(-2px);
-    -webkit-transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     border-color: var(--border-medium);
 }
@@ -400,8 +384,7 @@ body {
     outline: none;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
 /* Simplified audio player styling for Safari */
@@ -449,8 +432,7 @@ body {
     height: 8px;
     border-radius: 50%;
     background: var(--accent-blue);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
 .text-content {
@@ -466,12 +448,10 @@ body {
     font-size: 18px;
     transition: var(--transition);
     color: var(--text-primary);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
-/* Clean hover effects - no color changes, just subtle border */
+/* Clean hover effects - NO transforms that force GPU layers */
 .text-content:hover {
     border-color: var(--border-medium);
 }
@@ -512,7 +492,7 @@ body {
     background: var(--accent-red);
 }
 
-/* Modal Styles - Safari optimized */
+/* Modal Styles - NO GPU layer promotion */
 .modal {
     position: fixed;
     top: 0;
@@ -524,9 +504,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
+    /* NO GPU layer promotion */
 }
 
 .modal-overlay {
@@ -539,8 +517,7 @@ body {
     /* Simplified backdrop filter for Safari */
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
 .modal-content {
@@ -555,9 +532,7 @@ body {
     position: relative;
     z-index: 1001;
     border: 1px solid var(--border-light);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .modal-header {
@@ -589,9 +564,7 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .close-btn:hover {
@@ -626,8 +599,7 @@ body {
     border-radius: var(--radius-md);
     background: var(--bg-card);
     border: 1px solid var(--border-light);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
+    /* NO GPU layer promotion */
 }
 
 .modal-text-sections {
@@ -655,9 +627,7 @@ body {
     font-size: 18px;
     min-height: 120px;
     color: var(--text-primary);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .modal-text-section.ground-truth .modal-text-content {
@@ -744,15 +714,34 @@ body {
     gap: 0.5rem;
     background: var(--bg-card);
     color: var(--text-primary);
-    /* Safari-specific optimizations */
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* NO GPU layer promotion */
 }
 
 .nav-btn:hover {
     background: var(--accent-blue);
     color: white;
     border-color: var(--accent-blue);
+}
+
+.nav-btn:active {
+    background: #2563eb;
+}
+
+/* Disable hover effects on touch-only devices to prevent layer creation */
+@media (hover: none) and (pointer: coarse) {
+    .audio-card:hover,
+    .control-btn:hover,
+    .retry-btn:hover,
+    .nav-btn:hover,
+    .text-content:hover {
+        transform: none;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .audio-card:hover {
+        box-shadow: var(--shadow-sm);
+        border-color: var(--border-light);
+    }
 }
 
 /* Responsive Design */
@@ -828,28 +817,5 @@ body {
     
     .modal-text-content {
         font-size: 16px;
-    }
-}
-
-/* Safari-specific media queries */
-@media screen and (-webkit-min-device-pixel-ratio: 0) {
-    .audio-card:hover {
-        transform: translateY(-1px);
-        -webkit-transform: translateY(-1px);
-    }
-    
-    .control-btn:hover {
-        transform: translateY(0);
-        -webkit-transform: translateY(0);
-    }
-    
-    .retry-btn:hover {
-        transform: translateY(0);
-        -webkit-transform: translateY(0);
-    }
-    
-    .nav-btn:hover {
-        transform: translateY(0);
-        -webkit-transform: translateY(0);
     }
 }
