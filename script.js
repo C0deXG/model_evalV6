@@ -11,6 +11,7 @@ class AudioEvaluationApp {
         this.currentView = 'list'; // Default to list view
         this.isLoading = false;
         this.intersectionObserver = null;
+        this.isDarkMode = false;
         
         // Pagination
         this.cardsPerPage = 10;
@@ -81,6 +82,12 @@ class AudioEvaluationApp {
         }
         if (nextPageBtn) {
             nextPageBtn.addEventListener('click', () => this.nextPage());
+        }
+        
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        if (darkModeToggle) {
+            darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
         }
         
         // Keyboard shortcuts - Safari optimized
@@ -158,10 +165,11 @@ class AudioEvaluationApp {
                 throw new Error('Invalid data format');
             }
 
-            this.data = data.results;
+            // Apply sample reordering logic
+            this.data = this.reorderSamples(data.results);
             this.retryCount = 0;
             
-            console.log(`Successfully loaded ${this.data.length} audio samples`);
+            console.log(`Successfully loaded ${this.data.length} audio samples with reordering applied`);
             this.updateStats();
             
         } catch (error) {
@@ -170,6 +178,50 @@ class AudioEvaluationApp {
         } finally {
             this.isLoading = false;
         }
+    }
+
+    reorderSamples(samples) {
+        // Extract samples 60-75 (indices 59-74) as the first 16 items
+        const samples60to75 = samples.slice(59, 75); // samples 60-75
+        
+        // Extract samples 1-59 (indices 0-58) to be randomly inserted later
+        const samples1to59 = samples.slice(0, 59); // samples 1-59
+        
+        // Extract samples 76+ (indices 75+) as the remaining samples
+        const remainingSamples = samples.slice(75); // samples 76+
+        
+        // Create the reordered array starting with samples 60-75
+        let reorderedSamples = [...samples60to75];
+        
+        // Add remaining samples (76+)
+        reorderedSamples = reorderedSamples.concat(remainingSamples);
+        
+        // Randomly insert samples 1-59 after position 75 (which is now position 15 in our reordered array)
+        // We'll insert them randomly throughout the array after the first 16 positions
+        const insertPosition = 16; // After samples 60-75 (16 items)
+        
+        // Shuffle samples 1-59
+        const shuffledSamples1to59 = this.shuffleArray([...samples1to59]);
+        
+        // Insert them randomly after position 16
+        for (let i = 0; i < shuffledSamples1to59.length; i++) {
+            // Insert at random position after the first 16 items
+            const randomPosition = insertPosition + Math.floor(Math.random() * (reorderedSamples.length - insertPosition + 1));
+            reorderedSamples.splice(randomPosition, 0, shuffledSamples1to59[i]);
+        }
+        
+        console.log(`Reordered samples: ${samples60to75.length} samples 60-75 first, then ${remainingSamples.length} samples 76+, then ${shuffledSamples1to59.length} samples 1-59 randomly inserted`);
+        
+        return reorderedSamples;
+    }
+
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
     }
 
     async retryLoadData() {
@@ -352,11 +404,12 @@ class AudioEvaluationApp {
         card.className = 'audio-card';
         card.dataset.index = index;
         
-        const sampleNumber = this.extractSampleNumber(item.path);
+        // Display sequential sample number (1-400) in UI, but keep original path for audio
+        const displaySampleNumber = index + 1;
         
         // NO <source> tags up front - lazy load them
         card.innerHTML = `
-            <div class="sample-info">Sample #${sampleNumber}</div>
+            <div class="sample-info">Sample #${displaySampleNumber}</div>
             
             <audio class="audio-player" controls preload="none" data-path="${item.path}" data-index="${index}">
                 Your browser does not support the audio element.
@@ -464,14 +517,14 @@ class AudioEvaluationApp {
         
         this.currentSampleIndex = index;
         const item = this.data[index];
-        const sampleNumber = this.extractSampleNumber(item.path);
+        const displaySampleNumber = index + 1; // Sequential display number
         
         // Update modal content
         const modalTitle = document.getElementById('modalTitle');
         const modalGroundTruth = document.getElementById('modalGroundTruth');
         const modalPrediction = document.getElementById('modalPrediction');
         
-        if (modalTitle) modalTitle.textContent = `Sample #${sampleNumber} Analysis`;
+        if (modalTitle) modalTitle.textContent = `Sample #${displaySampleNumber} Analysis`;
         if (modalGroundTruth) modalGroundTruth.textContent = item.ground_truth;
         if (modalPrediction) modalPrediction.textContent = item.prediction;
         
@@ -481,9 +534,6 @@ class AudioEvaluationApp {
             modalAudio.src = item.path;
             modalAudio.load();
         }
-        
-        // Calculate error metrics
-        this.calculateErrorMetrics(item);
         
         // Show modal
         const modal = document.getElementById('modal');
@@ -515,55 +565,6 @@ class AudioEvaluationApp {
         }
     }
 
-    calculateErrorMetrics(item) {
-        // Simple character error rate calculation
-        const groundTruth = item.ground_truth;
-        const prediction = item.prediction;
-        
-        // Basic edit distance calculation
-        const distance = this.levenshteinDistance(groundTruth, prediction);
-        const cer = ((distance / groundTruth.length) * 100).toFixed(2);
-        
-        // Simple word error rate (approximation)
-        const gtWords = groundTruth.split(/\s+/).length;
-        const predWords = prediction.split(/\s+/).length;
-        const wordDistance = Math.abs(gtWords - predWords) + Math.floor(distance / 10);
-        const wer = ((wordDistance / gtWords) * 100).toFixed(2);
-        
-        const cerElement = document.getElementById('cer');
-        const werElement = document.getElementById('wer');
-        
-        if (cerElement) cerElement.textContent = `${cer}%`;
-        if (werElement) werElement.textContent = `${wer}%`;
-    }
-
-    levenshteinDistance(str1, str2) {
-        const matrix = [];
-        
-        for (let i = 0; i <= str2.length; i++) {
-            matrix[i] = [i];
-        }
-        
-        for (let j = 0; j <= str1.length; j++) {
-            matrix[0][j] = j;
-        }
-        
-        for (let i = 1; i <= str2.length; i++) {
-            for (let j = 1; j <= str1.length; j++) {
-                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1,
-                        matrix[i][j - 1] + 1,
-                        matrix[i - 1][j] + 1
-                    );
-                }
-            }
-        }
-        
-        return matrix[str2.length][str1.length];
-    }
 
     updateStats() {
         const totalSamples = this.data ? this.data.length : 0;
@@ -618,6 +619,23 @@ class AudioEvaluationApp {
             console.warn('Could not load view preference:', e);
             this.setView('list');
         }
+        
+        // Load dark mode preference
+        try {
+            const savedDarkMode = localStorage.getItem('preferredDarkMode');
+            if (savedDarkMode === 'true') {
+                this.isDarkMode = true;
+                this.applyDarkMode();
+            } else {
+                // Check system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    this.isDarkMode = true;
+                    this.applyDarkMode();
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load dark mode preference:', e);
+        }
     }
 
     increaseFontSize() {
@@ -671,6 +689,36 @@ class AudioEvaluationApp {
             localStorage.setItem('preferredView', view);
         } catch (e) {
             console.warn('Could not save view preference:', e);
+        }
+    }
+
+    toggleDarkMode() {
+        this.isDarkMode = !this.isDarkMode;
+        this.applyDarkMode();
+        
+        try {
+            localStorage.setItem('preferredDarkMode', this.isDarkMode.toString());
+        } catch (e) {
+            console.warn('Could not save dark mode preference:', e);
+        }
+    }
+
+    applyDarkMode() {
+        const body = document.body;
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        
+        if (this.isDarkMode) {
+            body.setAttribute('data-theme', 'dark');
+            if (darkModeToggle) {
+                darkModeToggle.innerHTML = '<span class="btn-icon">☀️</span><span class="btn-text">Light</span>';
+                darkModeToggle.title = 'Switch to light mode';
+            }
+        } else {
+            body.removeAttribute('data-theme');
+            if (darkModeToggle) {
+                darkModeToggle.innerHTML = '<span class="btn-icon">🌙</span><span class="btn-text">Dark</span>';
+                darkModeToggle.title = 'Switch to dark mode';
+            }
         }
     }
 
